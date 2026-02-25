@@ -15,4 +15,4 @@ class Settings(BaseSettings):
     api_port: int = 8000
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]
