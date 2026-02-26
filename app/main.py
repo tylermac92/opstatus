@@ -16,15 +16,19 @@ from app.core.error_handlers import (
 from app.core.exceptions import ConflictError, NotFoundError, ServiceUnavailableError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestMiddleware
+from app.db.session import engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_logging()
-    logger = structlog.get_logger()
+    logger: structlog.BoundLogger = structlog.get_logger()
     await logger.ainfo("Application starting up", env=settings.app_env)
     yield
-    await logger.ainfo("Application shutting down")
+    await logger.ainfo("Shutdown signal received, draining requests")
+    await engine.dispose()
+    await logger.ainfo("Database connection pool closed")
+    await logger.ainfo("Application shutdown complete")
 
 
 app = FastAPI(
