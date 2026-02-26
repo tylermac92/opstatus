@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,4 +45,20 @@ async def create_service(
         session=session,
         name=payload.name,
         description=payload.description,
+    )
+
+
+@router.get(
+    "/{service_id}",
+    response_model=ServiceResponse,
+    summary="Get a service by ID",
+    description="Returns a single service and its current derived health status.",
+)
+async def get_service(
+    service_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> ServiceResponse:
+    return await service_layer.get_service(
+        session=session,
+        service_id=service_id,
     )

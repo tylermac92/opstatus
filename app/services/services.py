@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.repositories.services import ServiceRepository
@@ -44,4 +46,13 @@ async def create_service(
 ) -> ServiceResponse:
     repo = ServiceRepository(session)
     service = await repo.create(name=name, description=description)
+    return build_service_response(service)
+
+
+async def get_service(
+    session: AsyncSession,
+    service_id: uuid.UUID,
+) -> ServiceResponse:
+    repo = ServiceRepository(session)
+    service = await repo.get_by_id(service_id)
     return build_service_response(service)
