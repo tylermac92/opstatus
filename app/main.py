@@ -3,8 +3,17 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 
 from app.core.config import settings
+from app.core.error_handlers import (
+    conflict_handler,
+    not_found_handler,
+    service_unavailable_handler,
+    unhandled_exception_handler,
+    validation_error_handler,
+)
+from app.core.exceptions import ConflictError, NotFoundError, ServiceUnavailableError
 from app.core.logging import configure_logging
 from app.core.middleware import RequestMiddleware
 
@@ -28,3 +37,9 @@ app = FastAPI(
 )
 
 app.add_middleware(RequestMiddleware)
+
+app.add_exception_handler(NotFoundError, not_found_handler)
+app.add_exception_handler(ConflictError, conflict_handler)
+app.add_exception_handler(ServiceUnavailableError, service_unavailable_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
