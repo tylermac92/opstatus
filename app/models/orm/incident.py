@@ -1,3 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.orm.incident_update import IncidentUpdate
+    from app.models.orm.service import Service
+
 import uuid
 from datetime import UTC, datetime
 
@@ -6,7 +14,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.enums import IncidentSeverity, IncidentStatus
 from app.models.orm.base import Base
-from app.models.orm.incident_update import IncidentUpdate
 from app.models.orm.service import Service
 
 
@@ -48,13 +55,13 @@ class Incident(Base):
         nullable=True,
     )
 
-    services: Mapped[list["Service"]] = relationship(  # noqa: F821
+    services: Mapped[list[Service]] = relationship(  # noqa: F821
         "Service",
         secondary="service_incidents",
         back_populates="incidents",
         lazy="selectin",
     )
-    updates: Mapped[list["IncidentUpdate"]] = relationship(  # noqa: F821
+    updates: Mapped[list[IncidentUpdate]] = relationship(  # noqa: F821
         "IncidentUpdate",
         back_populates="incident",
         lazy="selectin",

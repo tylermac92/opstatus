@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.orm.incident import Incident
+
 import uuid
 from datetime import UTC, datetime
 
@@ -6,7 +13,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.enums import IncidentStatus
 from app.models.orm.base import Base
-from app.models.orm.incident import Incident
 
 
 def utc_now() -> datetime:
@@ -35,7 +41,7 @@ class IncidentUpdate(Base):
         nullable=False,
     )
 
-    incident: Mapped["Incident"] = relationship(  # noqa: F821
+    incident: Mapped[Incident] = relationship(  # noqa: F821
         "Incident",
         back_populates="updates",
     )

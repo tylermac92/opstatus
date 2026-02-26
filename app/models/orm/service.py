@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.orm.incident import Incident
+
 import uuid
 from datetime import UTC, datetime
 
@@ -33,7 +40,7 @@ class Service(Base):
         nullable=False,
     )
 
-    incidents: Mapped[list["Incident"]] = relationship(  # noqa: F821
+    incidents: Mapped[list[Incident]] = relationship(  # noqa: F821
         "Incident",
         secondary="service_incidents",
         back_populates="services",
