@@ -5,6 +5,7 @@ import structlog
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
+from app.api.router import api_router
 from app.core.config import settings
 from app.core.error_handlers import (
     conflict_handler,
@@ -47,3 +48,5 @@ app.add_exception_handler(ConflictError, conflict_handler)
 app.add_exception_handler(ServiceUnavailableError, service_unavailable_handler)
 app.add_exception_handler(RequestValidationError, validation_error_handler)
 app.add_exception_handler(Exception, unhandled_exception_handler)
+
+app.include_router(api_router)
