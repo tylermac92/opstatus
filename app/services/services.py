@@ -35,3 +35,13 @@ async def list_services(session: AsyncSession) -> list[ServiceResponse]:
     repo = ServiceRepository(session)
     services = await repo.get_all()
     return [build_service_response(s) for s in services]
+
+
+async def create_service(
+    session: AsyncSession,
+    name: str,
+    description: str | None = None,
+) -> ServiceResponse:
+    repo = ServiceRepository(session)
+    service = await repo.create(name=name, description=description)
+    return build_service_response(service)
