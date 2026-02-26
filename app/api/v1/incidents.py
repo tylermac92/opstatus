@@ -5,7 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.models.enums import IncidentSeverity, IncidentStatus
-from app.models.schemas.incidents import IncidentListResponse
+from app.models.schemas.incidents import (
+    IncidentCreate,
+    IncidentListResponse,
+    IncidentResponse,
+)
 from app.services import incidents as incident_service
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
@@ -15,7 +19,7 @@ router = APIRouter(prefix="/incidents", tags=["Incidents"])
     "",
     response_model=IncidentListResponse,
     summary="List incidents",
-    description="Returns all incidents with optional filtering",
+    description="Returns all incidents with optional filtering.",
 )
 async def list_incidents(
     status: IncidentStatus | None = Query(
@@ -38,4 +42,24 @@ async def list_incidents(
     return IncidentListResponse(
         data=items,
         meta={"total": len(items)},
+    )
+
+
+@router.post(
+    "",
+    response_model=IncidentResponse,
+    status_code=201,
+    summary="Create an incident",
+    description="Opens a new incident. Initial status is investigating.",
+)
+async def create_incident(
+    payload: IncidentCreate,
+    session: AsyncSession = Depends(get_session),
+) -> IncidentResponse:
+    return await incident_service.create_incident(
+        session=session,
+        title=payload.title,
+        severity=payload.severity,
+        service_ids=payload.service_ids,
+        body=payload.body,
     )

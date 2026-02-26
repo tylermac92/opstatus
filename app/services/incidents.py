@@ -47,3 +47,20 @@ async def list_incidents(
         service_id=service_id,
     )
     return [build_incident_response(i) for i in incidents]
+
+
+async def create_incident(
+    session: AsyncSession,
+    title: str,
+    severity: IncidentSeverity,
+    service_ids: list[uuid.UUID],
+    body: str | None = None,
+) -> IncidentResponse:
+    repo = IncidentRepository(session)
+    incident = await repo.create(
+        title=title,
+        severity=severity,
+        service_ids=service_ids,
+        body=body,
+    )
+    return build_incident_response(incident)
