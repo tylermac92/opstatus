@@ -1,6 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -8,6 +9,7 @@ from app.models.schemas.services import (
     ServiceCreate,
     ServiceListResponse,
     ServiceResponse,
+    ServiceUpdate,
 )
 from app.services import services as service_layer
 
@@ -62,3 +64,39 @@ async def get_service(
         session=session,
         service_id=service_id,
     )
+
+
+@router.patch(
+    "/{service_id}",
+    response_model=ServiceResponse,
+    summary="Update a service",
+    description="Updates a service. Only provided fields are changed.",
+)
+async def update_service(
+    service_id: uuid.UUID,
+    payload: ServiceUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> ServiceResponse:
+    return await service_layer.update_service(
+        session=session,
+        service_id=service_id,
+        name=payload.name,
+        description=payload.description,
+    )
+
+
+@router.delete(
+    "/{service_id}",
+    status_code=204,
+    summary="Delete a service",
+    description="Deletes a service. The service must have no active incidents.",
+)
+async def delete_service(
+    service_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    await service_layer.delete_service(
+        session=session,
+        service_id=service_id,
+    )
+    return Response(status_code=204)

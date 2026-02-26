@@ -56,3 +56,26 @@ async def get_service(
     repo = ServiceRepository(session)
     service = await repo.get_by_id(service_id)
     return build_service_response(service)
+
+
+async def update_service(
+    session: AsyncSession,
+    service_id: uuid.UUID,
+    name: str | None = None,
+    description: str | None = None,
+) -> ServiceResponse:
+    repo = ServiceRepository(session)
+    service = await repo.update(
+        service_id=service_id,
+        name=name,
+        description=description,
+    )
+    return build_service_response(service)
+
+
+async def delete_service(
+    session: AsyncSession,
+    service_id: uuid.UUID,
+) -> None:
+    repo = ServiceRepository(session)
+    await repo.delete(service_id=service_id)
