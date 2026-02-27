@@ -13,6 +13,8 @@ class IncidentUpdateResponse(BaseModel):
     status: IncidentStatus
     created_at: datetime
 
+    # from_attributes=True allows Pydantic to read values directly from SQLAlchemy
+    # ORM model attributes instead of requiring a plain dict.
     model_config = {"from_attributes": True}
 
 
@@ -22,6 +24,8 @@ class IncidentResponse(BaseModel):
     body: str | None
     severity: IncidentSeverity
     status: IncidentStatus
+    # Flattened from the ORM relationship (Incident.services); the service layer
+    # maps Service objects to their UUIDs before constructing this response.
     service_ids: list[uuid.UUID]
     created_at: datetime
     updated_at: datetime

@@ -22,6 +22,8 @@ class ServiceRepository(BaseRepository):
         return list(result.scalars().all())
 
     async def create(self, name: str, description: str | None = None) -> Service:
+        # Strip leading/trailing whitespace so "  Payments  " and "Payments" resolve
+        # to the same name and trigger the unique constraint as expected.
         service = Service(name=name.strip(), description=description)
         self.session.add(service)
         try:
@@ -53,6 +55,8 @@ class ServiceRepository(BaseRepository):
 
     async def delete(self, service_id: uuid.UUID) -> None:
         service = await self.get_by_id(service_id)
+        # Refuse deletion while the service has open incidents to prevent orphaning
+        # incident data and to protect the integrity of any ongoing response.
         active_incidents = [i for i in service.incidents if i.status != "resolved"]
         if active_incidents:
             raise ConflictError(

@@ -12,12 +12,15 @@ from app.core.exceptions import ServiceUnavailableError
 
 engine = create_async_engine(
     settings.database_url,
+    # Log all SQL statements in development to aid debugging.
     echo=settings.app_env == "development",
 )
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
+    # Keep ORM objects accessible after commit without issuing extra SELECT queries.
+    # Without this, accessing attributes after commit would trigger lazy loads.
     expire_on_commit=False,
 )
 

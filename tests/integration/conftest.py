@@ -8,11 +8,14 @@ from app.db.session import get_session
 from app.main import app
 from app.models.orm import Base
 
+# Tests run against an in-memory SQLite database; no external services are required.
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    # Create a fresh schema for every test and drop it on teardown so tests
+    # are fully isolated from one another regardless of execution order.
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -33,6 +36,8 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    # Replace the production get_session dependency with one that yields the
+    # test session, so all requests in a test share the same transaction scope.
     async def override_get_session() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
@@ -49,6 +54,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest_asyncio.fixture
 async def broken_db_client() -> AsyncGenerator[AsyncClient, None]:
+    # Provides a client wired to a mock session whose execute method always raises,
+    # simulating a database connectivity failure for error-path tests.
     from unittest.mock import AsyncMock, MagicMock
 
     from app.db.session import get_session

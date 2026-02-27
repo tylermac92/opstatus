@@ -11,6 +11,9 @@ from app.core.metrics import http_request_duration_seconds, http_requests_total
 
 logger: structlog.BoundLogger = structlog.get_logger()
 
+# Paths that bypass logging and metrics recording.
+# Health probes are called frequently by orchestrators; /metrics is read by Prometheus.
+# Recording them would pollute logs and skew latency histograms.
 EXCLUDED_PATHS = {"/health/live", "/health/ready", "/metrics"}
 
 
@@ -23,6 +26,8 @@ class RequestMiddleware(BaseHTTPMiddleware):
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
 
+        # Honour a caller-supplied request ID (useful for distributed tracing),
+        # or generate a fresh UUID when none is provided.
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         request.state.request_id = request_id
 

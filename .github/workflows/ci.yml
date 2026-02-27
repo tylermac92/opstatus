@@ -32,7 +32,9 @@ jobs:
               run: mypy app --strict
 
             - name: Run tests
-              run: pytest --tb=short
+              env:
+                DATABASE_URL: sqlite+aiosqlite:///./opstatus.db
+              run: pytest --tb=short --cov=app --cov-report=term-missing
 
             - name: Build Docker image
               run: docker build .

@@ -42,7 +42,10 @@ class IncidentUpdateRepository(BaseRepository):
         )
         self.session.add(update)
 
-        # Refresh the parent incident's updated_at timestamp
+        # Touch the parent incident's updated_at so callers can tell at a glance
+        # when activity last occurred, even without fetching the updates list.
+        # SQLAlchemy's onupdate hook does not fire for mutations made in-session,
+        # so we set the timestamp explicitly.
         from datetime import datetime
 
         incident.updated_at = datetime.now(UTC)

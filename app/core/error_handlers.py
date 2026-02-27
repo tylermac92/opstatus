@@ -10,6 +10,8 @@ logger: structlog.BoundLogger = structlog.get_logger()
 
 
 def _get_request_id(request: Request) -> str:
+    # Falls back to "unknown" if the request reached this handler before
+    # RequestMiddleware had a chance to attach a request_id (e.g. very early errors).
     return str(getattr(request.state, "request_id", "unknown"))
 
 
@@ -64,6 +66,8 @@ async def service_unavailable_handler(request: Request, exc: Exception) -> JSONR
 
 async def validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, RequestValidationError)
+    # Flatten all Pydantic validation errors into a single human-readable string.
+    # Each error: "field -> subfield: message"; multiple errors joined with "; ".
     message = "; ".join(
         f"{' -> '.join(str(loc) for loc in err['loc'])}: {err['msg']}"
         for err in exc.errors()

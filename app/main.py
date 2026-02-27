@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await logger.ainfo("Application starting up", env=settings.app_env)
     yield
     await logger.ainfo("Shutdown signal received, draining requests")
+    # Gracefully close all database connections in the pool before the process exits.
     await engine.dispose()
     await logger.ainfo("Database connection pool closed")
     await logger.ainfo("Application shutdown complete")
@@ -37,6 +38,7 @@ app = FastAPI(
     version="0.1.0",
     description="Service Health & Incident Tracking API",
     lifespan=lifespan,
+    # Disable interactive API docs in production to reduce the attack surface.
     docs_url="/docs" if settings.app_env != "production" else None,
     redoc_url="/redoc" if settings.app_env != "production" else None,
 )

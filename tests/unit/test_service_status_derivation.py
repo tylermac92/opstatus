@@ -7,6 +7,8 @@ def make_incident(
     severity: IncidentSeverity,
     status: IncidentStatus = IncidentStatus.investigating,
 ) -> Incident:
+    # Construct a bare ORM instance without a database session.
+    # Only severity and status are set; derive_service_status inspects nothing else.
     incident = Incident()
     incident.severity = severity
     incident.status = status

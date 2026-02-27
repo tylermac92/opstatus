@@ -14,6 +14,9 @@ from app.models.schemas.incidents import IncidentResponse, IncidentUpdateRespons
 
 
 async def _sync_incident_metrics(session: AsyncSession) -> None:
+    # Re-query the full incident list and recompute gauges from scratch.
+    # This is simpler than tracking incremental changes and guarantees the
+    # gauges can never drift out of sync after any create/update/resolve operation.
     repo = IncidentRepository(session)
     all_incidents = await repo.get_all()
     active = [i for i in all_incidents if i.status != IncidentStatus.resolved]
@@ -23,6 +26,9 @@ async def _sync_incident_metrics(session: AsyncSession) -> None:
         active_incidents_total.labels(severity=severity.value).set(count)
 
 
+# Maps each status to the set of statuses it can legally transition to.
+# The lifecycle is strictly forward-only; "resolved" maps to an empty set
+# because it is a terminal state — no further transitions are permitted.
 VALID_TRANSITIONS: dict[IncidentStatus, set[IncidentStatus]] = {
     IncidentStatus.investigating: {IncidentStatus.identified},
     IncidentStatus.identified: {IncidentStatus.monitoring},
@@ -122,6 +128,8 @@ async def update_incident(
 
     if status is not None:
         validate_status_transition(incident.status, status)
+        # Resolving via PATCH delegates to the dedicated resolve path so that
+        # resolved_at is stamped correctly, even without calling /resolve directly.
         if status == IncidentStatus.resolved:
             incident = await repo.resolve(incident_id)
             return build_incident_response(incident)
@@ -162,6 +170,8 @@ async def resolve_incident(
     session: AsyncSession,
     incident_id: uuid.UUID,
 ) -> IncidentResponse:
+    # Local import avoids a circular dependency: IncidentUpdate ORM imports Incident
+    # which would otherwise create an import cycle at module load time.
     from app.models.orm.incident_update import IncidentUpdate as IncidentUpdateORM
 
     repo = IncidentRepository(session)

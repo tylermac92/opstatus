@@ -15,10 +15,14 @@ from app.models.enums import IncidentStatus
 from app.models.orm.base import Base
 
 
+# SQLAlchemy column defaults must be callables so the timestamp is evaluated
+# at insert time rather than at module import time.
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+# Incident updates are append-only: there are no API endpoints to edit or delete them.
+# This preserves an accurate audit trail of the incident response timeline.
 class IncidentUpdate(Base):
     __tablename__ = "incident_updates"
 
@@ -26,6 +30,7 @@ class IncidentUpdate(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
+    # CASCADE so updates are removed automatically when the parent incident is deleted.
     incident_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("incidents.id", ondelete="CASCADE"),
         nullable=False,

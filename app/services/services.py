@@ -13,13 +13,17 @@ from app.models.schemas.services import ServiceResponse
 
 
 def derive_service_status(incidents: list[Incident]) -> ServiceStatus:
+    # Only non-resolved incidents affect service health.
     active = [i for i in incidents if i.status != IncidentStatus.resolved]
     if not active:
         return ServiceStatus.operational
+    # Outage takes precedence: a single critical or high incident drives the service
+    # to "outage" regardless of any lower-severity incidents also being active.
     if any(
         i.severity in (IncidentSeverity.critical, IncidentSeverity.high) for i in active
     ):
         return ServiceStatus.outage
+    # Only medium/low incidents remain active at this point.
     return ServiceStatus.degraded
 
 

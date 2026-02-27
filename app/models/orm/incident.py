@@ -17,6 +17,8 @@ from app.models.orm.base import Base
 from app.models.orm.service import Service
 
 
+# SQLAlchemy column defaults must be callables so the timestamp is evaluated
+# at insert time rather than at module import time.
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -37,6 +39,8 @@ class Incident(Base):
     status: Mapped[IncidentStatus] = mapped_column(
         Enum(IncidentStatus),
         nullable=False,
+        # ORM-level default mirrors the service layer rule: all new incidents start
+        # in "investigating". This acts as a safety net if the ORM is used directly.
         default=IncidentStatus.investigating,
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -55,6 +59,8 @@ class Incident(Base):
         nullable=True,
     )
 
+    # selectin loading for both relationships avoids N+1 queries when fetching
+    # incidents. Updates are ordered ascending so the timeline reads chronologically.
     services: Mapped[list[Service]] = relationship(  # noqa: F821
         "Service",
         secondary="service_incidents",

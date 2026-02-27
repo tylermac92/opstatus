@@ -14,6 +14,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.orm.base import Base
 
 
+# SQLAlchemy column defaults must be callables, not values, so that the timestamp
+# is evaluated at insert time rather than at module import time.
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -39,6 +41,8 @@ class Service(Base):
         nullable=False,
     )
 
+    # selectin loading issues a single IN query to load all related incidents
+    # alongside the parent service, avoiding N+1 queries when listing services.
     incidents: Mapped[list[Incident]] = relationship(  # noqa: F821
         "Incident",
         secondary="service_incidents",

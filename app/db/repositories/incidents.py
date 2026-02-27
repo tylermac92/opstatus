@@ -14,6 +14,9 @@ from app.models.orm.incident import Incident
 
 class IncidentRepository(BaseRepository):
     async def get_by_id(self, incident_id: uuid.UUID) -> Incident:
+        # Expire all cached ORM state so SQLAlchemy re-fetches from the DB.
+        # Without this, stale in-memory data can be returned after a mutation
+        # performed earlier in the same session (e.g. resolve then get_by_id).
         self.session.expire_all()
         result = await self.session.execute(
             select(Incident)
@@ -41,6 +44,8 @@ class IncidentRepository(BaseRepository):
             query = query.where(Incident.services.any(id=service_id))
 
         result = await self.session.execute(query)
+        # .unique() deduplicates rows that can be multiplied by selectinload joins
+        # when an incident is linked to multiple services.
         return list(result.scalars().unique().all())
 
     async def create(
@@ -50,6 +55,8 @@ class IncidentRepository(BaseRepository):
         service_ids: list[uuid.UUID],
         body: str | None = None,
     ) -> Incident:
+        # Local import breaks the circular dependency between IncidentRepository
+        # and ServiceRepository (both extend BaseRepository in the same package).
         from app.db.repositories.services import ServiceRepository
 
         service_repo = ServiceRepository(self.session)

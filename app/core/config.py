@@ -8,11 +8,11 @@ class Settings(BaseSettings):
         case_sensitive=False,
     )
 
-    database_url: str
+    database_url: str = "sqlite+aiosqlite:///./opstatus.db"
     log_level: str = "INFO"
     app_env: str = "development"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
 
-settings = Settings()  # type: ignore[call-arg]
+settings = Settings()

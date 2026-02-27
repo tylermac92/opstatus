@@ -15,11 +15,14 @@ def configure_logging() -> None:
     ]
 
     if settings.app_env == "development":
+        # Human-readable coloured output for local development.
         processors: list[structlog.types.Processor] = [
             *shared_processors,
             structlog.dev.ConsoleRenderer(),
         ]
     else:
+        # Machine-parseable JSON for log aggregation pipelines
+        # (e.g. CloudWatch, Datadog).
         processors = [
             *shared_processors,
             structlog.processors.dict_tracebacks,
@@ -33,5 +36,6 @@ def configure_logging() -> None:
         ),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(sys.stdout),
+        # Avoid re-creating the logger wrapper on every call after the first bind.
         cache_logger_on_first_use=True,
     )

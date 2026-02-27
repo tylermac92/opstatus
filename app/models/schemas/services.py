@@ -36,6 +36,8 @@ class ServiceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    # from_attributes=True allows Pydantic to read values directly from SQLAlchemy
+    # ORM model attributes instead of requiring a plain dict.
     model_config = {"from_attributes": True}
 
 
