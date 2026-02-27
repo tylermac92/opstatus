@@ -14,14 +14,16 @@ from app.models.orm.incident import Incident
 
 class IncidentRepository(BaseRepository):
     async def get_by_id(self, incident_id: uuid.UUID) -> Incident:
-        result = await self.session.get(
-            Incident,
-            incident_id,
-            options=[selectinload(Incident.updates), selectinload(Incident.services)],
+        self.session.expire_all()
+        result = await self.session.execute(
+            select(Incident)
+            .options(selectinload(Incident.updates), selectinload(Incident.services))
+            .where(Incident.id == incident_id)
         )
-        if result is None:
+        incident = result.scalar_one_or_none()
+        if incident is None:
             raise NotFoundError(f"Incident with id '{incident_id}' does not exist.")
-        return result
+        return incident
 
     async def get_all(
         self,
