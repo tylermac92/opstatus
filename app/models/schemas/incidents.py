@@ -54,6 +54,13 @@ class IncidentUpdate(BaseModel):
     status: IncidentStatus | None = Field(None)
 
 
+class IncidentAppendUpdate(BaseModel):
+    message: str = Field(..., min_length=1, description="Status update message")
+    status: IncidentStatus = Field(
+        ..., description="The incident status at time of this update"
+    )
+
+
 class IncidentListResponse(BaseModel):
     data: list[IncidentResponse]
     meta: dict[str, int]

@@ -4,10 +4,31 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import ConflictError
+from app.db.repositories.incident_updates import IncidentUpdateRepository
 from app.db.repositories.incidents import IncidentRepository
 from app.models.enums import IncidentSeverity, IncidentStatus
 from app.models.orm.incident import Incident
 from app.models.schemas.incidents import IncidentResponse, IncidentUpdateResponse
+
+VALID_TRANSITIONS: dict[IncidentStatus, set[IncidentStatus]] = {
+    IncidentStatus.investigating: {IncidentStatus.identified},
+    IncidentStatus.identified: {IncidentStatus.monitoring},
+    IncidentStatus.monitoring: {IncidentStatus.resolved},
+    IncidentStatus.resolved: set(),
+}
+
+
+def validate_status_transition(
+    current: IncidentStatus,
+    new: IncidentStatus,
+) -> None:
+    if new not in VALID_TRANSITIONS[current]:
+        raise ConflictError(
+            f"Invalid status transition from '{current}' to '{new}'. "
+            f"Valid transitions from '{current}': "
+            f"{[s.value for s in VALID_TRANSITIONS[current]] or 'none'}."
+        )
 
 
 def build_incident_response(incident: Incident) -> IncidentResponse:
@@ -71,5 +92,79 @@ async def get_incident(
     incident_id: uuid.UUID,
 ) -> IncidentResponse:
     repo = IncidentRepository(session)
+    incident = await repo.get_by_id(incident_id)
+    return build_incident_response(incident)
+
+
+async def update_incident(
+    session: AsyncSession,
+    incident_id: uuid.UUID,
+    title: str | None = None,
+    body: str | None = None,
+    severity: IncidentSeverity | None = None,
+    status: IncidentStatus | None = None,
+) -> IncidentResponse:
+    repo = IncidentRepository(session)
+    incident = await repo.get_by_id(incident_id)
+
+    if status is not None:
+        validate_status_transition(incident.status, status)
+        if status == IncidentStatus.resolved:
+            incident = await repo.resolve(incident_id)
+            return build_incident_response(incident)
+
+    incident = await repo.update(
+        incident_id=incident_id,
+        title=title,
+        body=body,
+        severity=severity,
+        status=status,
+    )
+    return build_incident_response(incident)
+
+
+async def append_incident_update(
+    session: AsyncSession,
+    incident_id: uuid.UUID,
+    message: str,
+    status: IncidentStatus,
+) -> IncidentUpdateResponse:
+    repo = IncidentUpdateRepository(session)
+    update = await repo.create(
+        incident_id=incident_id,
+        message=message,
+        status=status,
+    )
+    return IncidentUpdateResponse(
+        id=update.id,
+        incident_id=update.incident_id,
+        message=update.message,
+        status=update.status,
+        created_at=update.created_at,
+    )
+
+
+async def resolve_incident(
+    session: AsyncSession,
+    incident_id: uuid.UUID,
+) -> IncidentResponse:
+    from app.models.orm.incident_update import IncidentUpdate as IncidentUpdateORM
+
+    repo = IncidentRepository(session)
+    incident = await repo.get_by_id(incident_id)
+
+    if incident.status == IncidentStatus.resolved:
+        raise ConflictError(f"Incident '{incident_id}' is already resolved.")
+
+    incident = await repo.resolve(incident_id)
+
+    final_update = IncidentUpdateORM(
+        incident_id=incident_id,
+        message="Incident resolved.",
+        status=IncidentStatus.resolved,
+    )
+    session.add(final_update)
+    await session.commit()
+
     incident = await repo.get_by_id(incident_id)
     return build_incident_response(incident)
