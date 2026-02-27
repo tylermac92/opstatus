@@ -1,25 +1,46 @@
 services:
   app:
-    build: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-graceful-shutdown 10
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      sh -c "alembic upgrade head && 
+        uvicorn app.main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+        --timeout-graceful-shutdown 10"
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     env_file:
       - .env
     depends_on:
       postgres:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /app/app
 
   postgres:
     image: postgres:16-alpine
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: opstatus
       POSTGRES_PASSWORD: opstatus
       POSTGRES_DB: opstatus
-    ports:
-      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U opstatus"]
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
