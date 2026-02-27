@@ -4,6 +4,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.metrics import services_total
 from app.db.repositories.services import ServiceRepository
 from app.models.enums import IncidentSeverity, IncidentStatus, ServiceStatus
 from app.models.orm.incident import Incident
@@ -46,6 +47,7 @@ async def create_service(
 ) -> ServiceResponse:
     repo = ServiceRepository(session)
     service = await repo.create(name=name, description=description)
+    services_total.inc()
     return build_service_response(service)
 
 
@@ -79,3 +81,4 @@ async def delete_service(
 ) -> None:
     repo = ServiceRepository(session)
     await repo.delete(service_id=service_id)
+    services_total.dec()

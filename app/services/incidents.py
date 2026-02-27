@@ -5,11 +5,23 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError
+from app.core.metrics import active_incidents_total
 from app.db.repositories.incident_updates import IncidentUpdateRepository
 from app.db.repositories.incidents import IncidentRepository
 from app.models.enums import IncidentSeverity, IncidentStatus
 from app.models.orm.incident import Incident
 from app.models.schemas.incidents import IncidentResponse, IncidentUpdateResponse
+
+
+async def _sync_incident_metrics(session: AsyncSession) -> None:
+    repo = IncidentRepository(session)
+    all_incidents = await repo.get_all()
+    active = [i for i in all_incidents if i.status != IncidentStatus.resolved]
+
+    for severity in IncidentSeverity:
+        count = sum(1 for i in active if i.severity == severity)
+        active_incidents_total.labels(severity=severity.value).set(count)
+
 
 VALID_TRANSITIONS: dict[IncidentStatus, set[IncidentStatus]] = {
     IncidentStatus.investigating: {IncidentStatus.identified},
@@ -84,6 +96,7 @@ async def create_incident(
         service_ids=service_ids,
         body=body,
     )
+    await _sync_incident_metrics(session)
     return build_incident_response(incident)
 
 
@@ -120,6 +133,7 @@ async def update_incident(
         severity=severity,
         status=status,
     )
+    await _sync_incident_metrics(session)
     return build_incident_response(incident)
 
 
@@ -165,6 +179,8 @@ async def resolve_incident(
     )
     session.add(final_update)
     await session.commit()
+
+    await _sync_incident_metrics(session)
 
     incident = await repo.get_by_id(incident_id)
     return build_incident_response(incident)

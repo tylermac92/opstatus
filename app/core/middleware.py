@@ -7,7 +7,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-logger = structlog.get_logger()
+from app.core.metrics import http_request_duration_seconds, http_requests_total
+
+logger: structlog.BoundLogger = structlog.get_logger()
 
 EXCLUDED_PATHS = {"/health/live", "/health/ready", "/metrics"}
 
@@ -21,11 +23,9 @@ class RequestMiddleware(BaseHTTPMiddleware):
         if request.url.path in EXCLUDED_PATHS:
             return await call_next(request)
 
-        # Request ID — use incoming header if present, otherwise generate one
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         request.state.request_id = request_id
 
-        # Bind request_id to structlog context for all downstream log calls
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
@@ -33,19 +33,28 @@ class RequestMiddleware(BaseHTTPMiddleware):
             path=request.url.path,
         )
 
-        # Time the request
         start_time = time.perf_counter()
         response = await call_next(request)
-        duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        duration = time.perf_counter() - start_time
+        duration_ms = round(duration * 1000, 2)
 
-        # Attach request ID to response header
         response.headers["x-request-id"] = request_id
 
-        # Emit structured completion log
         await logger.ainfo(
             "Request completed",
             status_code=response.status_code,
             duration_ms=duration_ms,
         )
+
+        # Record Prometheus metrics
+        http_requests_total.labels(
+            method=request.method,
+            path=request.url.path,
+            status_code=str(response.status_code),
+        ).inc()
+        http_request_duration_seconds.labels(
+            method=request.method,
+            path=request.url.path,
+        ).observe(duration)
 
         return response
