@@ -45,3 +45,27 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def broken_db_client() -> AsyncGenerator[AsyncClient, None]:
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.db.session import get_session
+    from app.main import app
+
+    mock_session = MagicMock()
+    mock_session.execute = AsyncMock(side_effect=Exception("DB connection failed"))
+
+    async def override_broken_session() -> AsyncGenerator[AsyncSession, None]:
+        yield mock_session
+
+    app.dependency_overrides[get_session] = override_broken_session
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()

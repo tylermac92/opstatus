@@ -1,11 +1,12 @@
 import time
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import AsyncSessionLocal
+from app.db.session import get_session
 
 logger: structlog.BoundLogger = structlog.get_logger()
 
@@ -15,8 +16,7 @@ router = APIRouter(tags=["Health"])
 @router.get(
     "/health/live",
     summary="Liveness probe",
-    description="Returns 200 if process is running",
-    include_in_schema=True,
+    description="Returns 200 if the process is running and responsive.",
 )
 async def liveness() -> JSONResponse:
     return JSONResponse({"status": "ok"})
@@ -25,14 +25,14 @@ async def liveness() -> JSONResponse:
 @router.get(
     "/health/ready",
     summary="Readiness probe",
-    description="Returns 200 if db is healthy",
-    include_in_schema=True,
+    description="Returns 200 only if the database connection pool is healthy.",
 )
-async def readiness() -> JSONResponse:
+async def readiness(
+    session: AsyncSession = Depends(get_session),
+) -> JSONResponse:
     start = time.perf_counter()
     try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
+        await session.execute(text("SELECT 1"))
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
         return JSONResponse(
             status_code=200,
@@ -48,7 +48,7 @@ async def readiness() -> JSONResponse:
         )
     except Exception:
         duration_ms = round((time.perf_counter() - start) * 1000, 2)
-        await logger.awarning("Readiness check failed - database unreachable")
+        logger.warning("Readiness check failed - database unreachable")
         return JSONResponse(
             status_code=503,
             content={
