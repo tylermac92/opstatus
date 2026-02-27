@@ -64,3 +64,12 @@ async def create_incident(
         body=body,
     )
     return build_incident_response(incident)
+
+
+async def get_incident(
+    session: AsyncSession,
+    incident_id: uuid.UUID,
+) -> IncidentResponse:
+    repo = IncidentRepository(session)
+    incident = await repo.get_by_id(incident_id)
+    return build_incident_response(incident)

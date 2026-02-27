@@ -19,7 +19,8 @@ router = APIRouter(prefix="/incidents", tags=["Incidents"])
     "",
     response_model=IncidentListResponse,
     summary="List incidents",
-    description="Returns all incidents with optional filtering.",
+    description="Returns all incidents with optional filtering"
+    " by status, severity, or service.",
 )
 async def list_incidents(
     status: IncidentStatus | None = Query(
@@ -50,7 +51,8 @@ async def list_incidents(
     response_model=IncidentResponse,
     status_code=201,
     summary="Create an incident",
-    description="Opens a new incident. Initial status is investigating.",
+    description="Opens a new incident against one or "
+    "more services. Initial status is always investigating.",
 )
 async def create_incident(
     payload: IncidentCreate,
@@ -62,4 +64,20 @@ async def create_incident(
         severity=payload.severity,
         service_ids=payload.service_ids,
         body=payload.body,
+    )
+
+
+@router.get(
+    "/{incident_id}",
+    response_model=IncidentResponse,
+    summary="Get an incident by ID",
+    description="Returns a single incident with its full update timeline.",
+)
+async def get_incident(
+    incident_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> IncidentResponse:
+    return await incident_service.get_incident(
+        session=session,
+        incident_id=incident_id,
     )
