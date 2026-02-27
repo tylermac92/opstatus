@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Local development
+.env
+*.db
+*.sqlite3
+
+# Version control
+.git/
+.gitignore
+
+# Development tools
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Tests
+tests/
+
+# Documentation
+README.md
+
+# CI
+.github/
+
+# Dev requirements — not needed in the image
+requirements-dev.txt
+requirements-dev.in
+requirements.in
